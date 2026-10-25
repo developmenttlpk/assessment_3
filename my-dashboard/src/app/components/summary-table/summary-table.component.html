@@ -1,0 +1,35 @@
+<section class="card">
+  <header class="card-head">
+    <h2>Metric breakdown</h2>
+    <p>{{ caption }}</p>
+  </header>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th scope="col">Metric</th>
+          <th scope="col" class="num">Target</th>
+          <th scope="col" class="num">Actual</th>
+          <th scope="col" class="num">Variance</th>
+          <th scope="col" class="num">Variance %</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (row of rows; track row.key) {
+          <tr>
+            <th scope="row">{{ row.label }}</th>
+            <td class="num">{{ formatValue(row.target, row.format) }}</td>
+            <td class="num strong">{{ formatValue(row.actual, row.format) }}</td>
+            <td class="num">
+              <span class="pill" [class]="row.status" data-test="variance">{{ formatVariance(row) }}</span>
+            </td>
+            <td class="num muted-pct" [class]="row.variancePercent === null ? 'neutral' : row.status">
+              {{ formatVariancePercent(row) }}
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+</section>

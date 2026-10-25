@@ -1,1 +1,95 @@
-/* You can add global styles to this file, and also import other style files */
+:root {
+  --bg: #f3f5f9;
+  --card: #ffffff;
+  --card-alt: #f8fafc;
+  --text: #0f172a;
+  --muted: #64748b;
+  --border: #e2e8f0;
+  --primary: #4f46e5;
+  --primary-hover: #4338ca;
+  --primary-soft: #eef2ff;
+  --on-primary: #ffffff;
+  --good: #047857;
+  --good-soft: #d1fae5;
+  --bad: #b91c1c;
+  --bad-soft: #fee2e2;
+  --neutral-soft: #f1f5f9;
+  --shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 4px 16px rgba(15, 23, 42, 0.06);
+  --radius: 14px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0b1020;
+    --card: #131a2e;
+    --card-alt: #182039;
+    --text: #e2e8f0;
+    --muted: #94a3b8;
+    --border: #243049;
+    --primary: #818cf8;
+    --primary-hover: #a5b4fc;
+    --primary-soft: #1e2550;
+    --on-primary: #0b1020;
+    --good: #34d399;
+    --good-soft: #0f3b2e;
+    --bad: #f87171;
+    --bad-soft: #3f1a1f;
+    --neutral-soft: #1c2540;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 4px 16px rgba(0, 0, 0, 0.25);
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+}
+
+
+:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 0.85em;
+  white-space: nowrap;
+}
+
+.pill.good {
+  color: var(--good);
+  background: var(--good-soft);
+}
+
+.pill.bad {
+  color: var(--bad);
+  background: var(--bad-soft);
+}
+
+.pill.neutral {
+  color: var(--muted);
+  background: var(--neutral-soft);
+}
+
+
+.pill.good::before {
+  content: '▲';
+  font-size: 0.7em;
+}
+
+.pill.bad::before {
+  content: '▼';
+  font-size: 0.7em;
+}
