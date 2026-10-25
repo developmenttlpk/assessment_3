@@ -1,4 +1,4 @@
-import { Injectable, inject } from '@angular/core';
+import { Injectable } from '@angular/core';
 import {
     BehaviorSubject,
     Observable,
@@ -40,140 +40,196 @@ export interface DashboardViewModel {
 
 @Injectable({ providedIn: 'root' })
 export class DashboardStateService {
-    private readonly api = inject(MockApiService);
+    private cache = new Map<MonthKey, PerformanceResponse>();
 
-    private readonly cache = new Map<MonthKey, PerformanceResponse>();
+    private filters$ = new BehaviorSubject<DashboardFilters>(loadFilters());
+    private refresh$ = new Subject<void>();
 
-    private readonly filters$ = new BehaviorSubject<DashboardFilters>(loadFilters());
-    private readonly refresh$ = new Subject<void>();
+    request$: Observable<RequestState>;
+    viewModel$: Observable<DashboardViewModel>;
 
-    readonly request$: Observable<RequestState> = merge(
-        this.filters$.pipe(
+    constructor(private api: MockApiService) {
+        let monthChanged$ = this.filters$.pipe(
             map((filters) => filters.month),
             distinctUntilChanged(),
-            map((month) => ({ month, forceReload: false })),
-        ),
-        this.refresh$.pipe(map(() => ({ month: this.filters$.value.month, forceReload: true }))),
-    ).pipe(
-        switchMap(({ month, forceReload }) => this.loadMonth(month, forceReload)),
-        shareReplay({ bufferSize: 1, refCount: true }),
-    );
+            map((month) => {
+                return { month: month, forceReload: false };
+            }),
+        );
 
-    readonly viewModel$: Observable<DashboardViewModel> = combineLatest([
-        this.filters$,
-        this.request$,
-    ]).pipe(
-        map(([filters, request]) => {
-            const details = request.response?.data.details ?? [];
-            const costCenterOptions = getCostCenterOptions(details);
-            return {
-                filters,
-                request,
-                costCenterOptions,
-                selectedCostCenters: filters.costCenters.filter((n) => costCenterOptions.includes(n)),
-                dateRange: request.response?.data.report.date ?? null,
-                rows: details.length
-                    ? calculateDashboard(details, filters.costCenters, filters.engagementTypes)
-                    : [],
-            };
-        }),
-    );
+        let refreshClicked$ = this.refresh$.pipe(
+            map(() => {
+                return { month: this.filters$.value.month, forceReload: true };
+            }),
+        );
 
-    selectMonth(month: MonthKey): void {
-        this.update({ month });
+        this.request$ = merge(monthChanged$, refreshClicked$).pipe(
+            switchMap((x) => this.loadMonth(x.month, x.forceReload)),
+            shareReplay({ bufferSize: 1, refCount: true }),
+        );
+
+        this.viewModel$ = combineLatest([this.filters$, this.request$]).pipe(
+            map(([filters, request]) => this.buildViewModel(filters, request)),
+        );
     }
 
-    refresh(): void {
+    selectMonth(month: MonthKey) {
+        this.updateFilters({ month: month });
+    }
+
+    refresh() {
         this.refresh$.next();
     }
 
-    selectAllCostCenters(): void {
-        this.update({ costCenters: [] });
+    selectAllCostCenters() {
+        this.updateFilters({ costCenters: [] });
     }
 
-    toggleCostCenter(name: string): void {
-        const current = this.filters$.value.costCenters;
-        const costCenters = current.includes(name)
-            ? current.filter((n) => n !== name)
-            : [...current, name];
-        this.update({ costCenters });
+    toggleCostCenter(name: string) {
+        let list = [...this.filters$.value.costCenters];
+        let index = list.indexOf(name);
+        if (index >= 0) {
+            list.splice(index, 1);
+        } else {
+            list.push(name);
+        }
+        this.updateFilters({ costCenters: list });
     }
 
-    toggleEngagementType(type: EngagementType): void {
-        const current = this.filters$.value.engagementTypes;
-        const engagementTypes = current.includes(type)
-            ? current.filter((t) => t !== type)
-            : [...current, type];
-        this.update({ engagementTypes });
+    toggleEngagementType(type: EngagementType) {
+        let list = [...this.filters$.value.engagementTypes];
+        let index = list.indexOf(type);
+        if (index >= 0) {
+            list.splice(index, 1);
+        } else {
+            list.push(type);
+        }
+        this.updateFilters({ engagementTypes: list });
     }
 
-    resetFilters(): void {
-        this.update({ costCenters: [], engagementTypes: [] });
+    resetFilters() {
+        this.updateFilters({ costCenters: [], engagementTypes: [] });
     }
 
-    private update(change: Partial<DashboardFilters>): void {
-        const next = { ...this.filters$.value, ...change };
-        saveFilters(next);
-        this.filters$.next(next);
+    private updateFilters(change: Partial<DashboardFilters>) {
+        let newFilters = { ...this.filters$.value, ...change };
+        saveFilters(newFilters);
+        this.filters$.next(newFilters);
+    }
+
+    private buildViewModel(filters: DashboardFilters, request: RequestState): DashboardViewModel {
+        let details = request.response ? request.response.data.details : [];
+        let options = getCostCenterOptions(details);
+
+        let selected: string[] = [];
+        for (let name of filters.costCenters) {
+            if (options.includes(name)) {
+                selected.push(name);
+            }
+        }
+
+        let rows: SummaryRow[] = [];
+        if (details.length > 0) {
+            rows = calculateDashboard(details, filters.costCenters, filters.engagementTypes);
+        }
+
+        let dateRange = null;
+        if (request.response) {
+            dateRange = request.response.data.report.date;
+        }
+
+        return {
+            filters: filters,
+            request: request,
+            costCenterOptions: options,
+            selectedCostCenters: selected,
+            dateRange: dateRange,
+            rows: rows,
+        };
     }
 
     private loadMonth(month: MonthKey, forceReload: boolean): Observable<RequestState> {
-        const cached = this.cache.get(month) ?? null;
+        let oldData = this.cache.get(month) || null;
 
-        if (cached && !forceReload) {
-            return of({ month, status: 'success', response: cached, error: null });
+        if (oldData && !forceReload) {
+            let state: RequestState = { month: month, status: 'success', response: oldData, error: null };
+            return of(state);
         }
 
+        let loadingState: RequestState = { month: month, status: 'loading', response: oldData, error: null };
+
         return this.api.getPerformance(month).pipe(
-            tap((response) => this.cache.set(month, response)),
-            map((response): RequestState => ({ month, status: 'success', response, error: null })),
-            
-            catchError((err: unknown) =>
-                of<RequestState>({
-                    month,
-                    status: 'error',
-                    response: cached,
-                    error: err instanceof Error ? err.message : 'Something went wrong.',
-                }),
-            ),
-            startWith<RequestState>({ month, status: 'loading', response: cached, error: null }),
+            tap((response) => {
+                this.cache.set(month, response);
+            }),
+            map((response) => {
+                let state: RequestState = { month: month, status: 'success', response: response, error: null };
+                return state;
+            }),
+            catchError((err) => {
+                let message = 'Something went wrong.';
+                if (err instanceof Error) {
+                    message = err.message;
+                }
+                let state: RequestState = { month: month, status: 'error', response: oldData, error: message };
+                return of(state);
+            }),
+            startWith(loadingState),
         );
     }
 }
 
-
-const DEFAULT_FILTERS: DashboardFilters = {
-    month: '2026-10',
-    costCenters: [],
-    engagementTypes: [],
-};
-
-
-export function loadFilters(): DashboardFilters {
-    try {
-        const raw = localStorage.getItem(STORAGE_KEY);
-        if (!raw) return { ...DEFAULT_FILTERS };
-        const saved = JSON.parse(raw) as Partial<DashboardFilters>;
-
-        const validMonth = MONTHS.some((m) => m.key === saved.month);
-        return {
-            month: validMonth ? (saved.month as MonthKey) : DEFAULT_FILTERS.month,
-            costCenters: Array.isArray(saved.costCenters)
-                ? saved.costCenters.filter((n) => typeof n === 'string')
-                : [],
-            engagementTypes: Array.isArray(saved.engagementTypes)
-                ? saved.engagementTypes.filter((t) => t === 'Own' || t === 'Rented' || t === 'Hired')
-                : [],
-        };
-    } catch {
-        return { ...DEFAULT_FILTERS };
-    }
+function getDefaultFilters(): DashboardFilters {
+    return {
+        month: '2026-10',
+        costCenters: [],
+        engagementTypes: [],
+    };
 }
 
-function saveFilters(filters: DashboardFilters): void {
+export function loadFilters(): DashboardFilters {
+    let filters = getDefaultFilters();
+
+    try {
+        let text = localStorage.getItem(STORAGE_KEY);
+        if (!text) {
+            return filters;
+        }
+        let saved = JSON.parse(text);
+
+        for (let m of MONTHS) {
+            if (m.key == saved.month) {
+                filters.month = saved.month;
+            }
+        }
+
+        if (Array.isArray(saved.costCenters)) {
+            for (let name of saved.costCenters) {
+                if (typeof name == 'string') {
+                    filters.costCenters.push(name);
+                }
+            }
+        }
+
+        if (Array.isArray(saved.engagementTypes)) {
+            for (let type of saved.engagementTypes) {
+                if (type == 'Own' || type == 'Rented' || type == 'Hired') {
+                    filters.engagementTypes.push(type);
+                }
+            }
+        }
+    } catch (e) {
+        console.log('could not read saved filters', e);
+        return getDefaultFilters();
+    }
+
+    return filters;
+}
+
+function saveFilters(filters: DashboardFilters) {
     try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(filters));
-    } catch {
-
+    } catch (e) {
+        console.log('could not save filters', e);
     }
 }

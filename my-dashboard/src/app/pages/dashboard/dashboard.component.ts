@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component } from '@angular/core';
 import { AsyncPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 
@@ -7,8 +7,6 @@ import { DashboardStateService, DashboardViewModel } from '../../services/dashbo
 import { SummaryTableComponent } from '../../components/summary-table/summary-table.component';
 import { KpiCardComponent } from '../../components/kpi-card/kpi-card.component';
 
-const HIGHLIGHT_KEYS = ['revenue', 'gp', 'gp_percentage', 'trips'];
-
 @Component({
   selector: 'app-dashboard',
   imports: [AsyncPipe, FormsModule, SummaryTableComponent, KpiCardComponent],
@@ -16,40 +14,64 @@ const HIGHLIGHT_KEYS = ['revenue', 'gp', 'gp_percentage', 'trips'];
   styleUrl: './dashboard.component.css',
 })
 export class DashboardComponent {
-  readonly state = inject(DashboardStateService);
-  readonly vm$ = this.state.viewModel$;
-
-  readonly months = MONTHS;
-  readonly engagementTypes = ENGAGEMENT_TYPES;
-
+  months = MONTHS;
+  engagementTypes = ENGAGEMENT_TYPES;
+  cardKeys = ['revenue', 'gp', 'gp_percentage', 'trips'];
   search = '';
 
-  monthLabel(key: MonthKey): string {
-    return MONTHS.find((m) => m.key === key)?.label ?? key;
+  vm$;
+
+  constructor(public state: DashboardStateService) {
+    this.vm$ = this.state.viewModel$;
   }
 
-  filterOptions(options: string[]): string[] {
-    const text = this.search.trim().toLowerCase();
-    return text ? options.filter((name) => name.toLowerCase().includes(text)) : options;
+  getMonthName(key: MonthKey): string {
+    for (let i = 0; i < this.months.length; i++) {
+      if (this.months[i].key == key) {
+        return this.months[i].label;
+      }
+    }
+    return key;
   }
 
-  highlights(rows: SummaryRow[]): SummaryRow[] {
-    return HIGHLIGHT_KEYS.map((key) => rows.find((r) => r.key === key)).filter(
-      (r): r is SummaryRow => !!r,
-    );
+  getFilteredCostCenters(names: string[]): string[] {
+    let text = this.search.trim().toLowerCase();
+    if (text == '') {
+      return names;
+    }
+
+    let result: string[] = [];
+    for (let name of names) {
+      if (name.toLowerCase().includes(text)) {
+        result.push(name);
+      }
+    }
+    return result;
   }
 
-  selectionText(vm: DashboardViewModel): string {
-    const centers = vm.selectedCostCenters.length
-      ? vm.selectedCostCenters.join(', ')
-      : 'All cost centers';
-    const types = vm.filters.engagementTypes.length
-      ? vm.filters.engagementTypes.join(' + ')
-      : 'Combined';
-    return `${centers} · ${types}`;
+  getCardRows(rows: SummaryRow[]): SummaryRow[] {
+    let result: SummaryRow[] = [];
+    for (let key of this.cardKeys) {
+      for (let row of rows) {
+        if (row.key == key) {
+          result.push(row);
+        }
+      }
+    }
+    return result;
   }
 
-  hasFilters(vm: DashboardViewModel): boolean {
-    return vm.selectedCostCenters.length > 0 || vm.filters.engagementTypes.length > 0;
+  getSelectionText(vm: DashboardViewModel): string {
+    let centers = 'All cost centers';
+    if (vm.selectedCostCenters.length > 0) {
+      centers = vm.selectedCostCenters.join(', ');
+    }
+
+    let types = 'Combined';
+    if (vm.filters.engagementTypes.length > 0) {
+      types = vm.filters.engagementTypes.join(' + ');
+    }
+
+    return centers + ' - ' + types;
   }
 }

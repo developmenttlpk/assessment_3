@@ -1,35 +1,31 @@
-<section class="card">
-  <header class="card-head">
-    <h2>Metric breakdown</h2>
-    <p>{{ caption }}</p>
-  </header>
+<div class="card shadow-sm">
+  <div class="card-header bg-white">
+    <h5 class="mb-0">Summary</h5>
+    <small class="text-muted">{{ caption }}</small>
+  </div>
 
-  <div class="table-wrap">
-    <table>
-      <thead>
+  <div class="table-responsive">
+    <table class="table table-bordered table-striped table-hover mb-0">
+      <thead class="table-light">
         <tr>
-          <th scope="col">Metric</th>
-          <th scope="col" class="num">Target</th>
-          <th scope="col" class="num">Actual</th>
-          <th scope="col" class="num">Variance</th>
-          <th scope="col" class="num">Variance %</th>
+          <th>Metric</th>
+          <th class="text-end">Target</th>
+          <th class="text-end">Actual</th>
+          <th class="text-end">Variance</th>
+          <th class="text-end">Variance %</th>
         </tr>
       </thead>
       <tbody>
         @for (row of rows; track row.key) {
           <tr>
-            <th scope="row">{{ row.label }}</th>
-            <td class="num">{{ formatValue(row.target, row.format) }}</td>
-            <td class="num strong">{{ formatValue(row.actual, row.format) }}</td>
-            <td class="num">
-              <span class="pill" [class]="row.status" data-test="variance">{{ formatVariance(row) }}</span>
-            </td>
-            <td class="num muted-pct" [class]="row.variancePercent === null ? 'neutral' : row.status">
-              {{ formatVariancePercent(row) }}
-            </td>
+            <td>{{ row.label }}</td>
+            <td class="text-end">{{ showValue(row, row.target) }}</td>
+            <td class="text-end">{{ showValue(row, row.actual) }}</td>
+            <td class="text-end" [class]="row.status" data-test="variance">{{ showVariance(row) }}</td>
+            <td class="text-end" [class]="getPercentClass(row)">{{ showVariancePercent(row) }}</td>
           </tr>
         }
       </tbody>
     </table>
   </div>
-</section>
+</div>

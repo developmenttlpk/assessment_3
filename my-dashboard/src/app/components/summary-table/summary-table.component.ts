@@ -9,10 +9,25 @@ import { formatValue, formatVariance, formatVariancePercent } from '../../utils/
   styleUrl: './summary-table.component.css',
 })
 export class SummaryTableComponent {
-  @Input({ required: true }) rows: SummaryRow[] = [];
-  @Input() caption = 'Month-to-date summary';
+  @Input() rows: SummaryRow[] = [];
+  @Input() caption = '';
 
-  readonly formatValue = formatValue;
-  readonly formatVariance = formatVariance;
-  readonly formatVariancePercent = formatVariancePercent;
+  showValue(row: SummaryRow, value: number): string {
+    return formatValue(value, row.format);
+  }
+
+  showVariance(row: SummaryRow): string {
+    return formatVariance(row);
+  }
+
+  showVariancePercent(row: SummaryRow): string {
+    return formatVariancePercent(row);
+  }
+
+  getPercentClass(row: SummaryRow): string {
+    if (row.variancePercent === null) {
+      return 'neutral';
+    }
+    return row.status;
+  }
 }

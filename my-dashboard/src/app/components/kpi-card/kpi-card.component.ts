@@ -6,76 +6,40 @@ import { formatValue, formatVariance, formatVariancePercent } from '../../utils/
 @Component({
   selector: 'app-kpi-card',
   template: `
-    <article class="kpi" [class]="row.status">
-      <p class="label">{{ row.label }}</p>
-      <p class="value">{{ formatValue(row.actual, row.format) }}</p>
-      <div class="foot">
-        <span class="pill" [class]="row.status">{{ formatVariance(row) }}</span>
-        @if (row.variancePercent !== null) {
-          <span class="pct">{{ formatVariancePercent(row) }}</span>
-        }
+    <div class="card h-100 border-0 shadow-sm">
+      <div class="card-body">
+        <div class="text-muted small">{{ row.label }}</div>
+        <h4 class="my-2 fw-semibold">{{ showValue(row.actual) }}</h4>
+        <div class="small text-muted">Target: {{ showValue(row.target) }}</div>
+        <div class="small">
+          <span [class]="row.status">
+            {{ showVariance() }}
+            @if (row.variancePercent !== null) {
+              ({{ showVariancePercent() }})
+            }
+          </span>
+        </div>
       </div>
-      <p class="target">Target {{ formatValue(row.target, row.format) }}</p>
-    </article>
+    </div>
   `,
   styles: `
-    .kpi {
-      position: relative;
-      height: 100%;
-      padding: 16px 18px;
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      box-shadow: var(--shadow);
-      overflow: hidden;
-    }
-    .kpi::before {
-      content: '';
-      position: absolute;
-      inset: 0 auto 0 0;
-      width: 4px;
-      background: var(--border);
-    }
-    .kpi.good::before { background: var(--good); }
-    .kpi.bad::before { background: var(--bad); }
-
-    p { margin: 0; }
-    .label {
-      font-size: 0.78rem;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      color: var(--muted);
-    }
-    .value {
-      margin: 8px 0 10px;
-      font-size: 1.55rem;
-      font-weight: 700;
-      font-variant-numeric: tabular-nums;
-      letter-spacing: -0.02em;
-    }
-    .foot {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      flex-wrap: wrap;
-    }
-    .pct {
-      font-size: 0.82rem;
-      color: var(--muted);
-    }
-    .target {
-      margin-top: 10px;
-      font-size: 0.8rem;
-      color: var(--muted);
-      font-variant-numeric: tabular-nums;
+    .card {
+      border-top: 3px solid #0d6efd !important;
     }
   `,
 })
 export class KpiCardComponent {
-  @Input({ required: true }) row!: SummaryRow;
+  @Input() row!: SummaryRow;
 
-  readonly formatValue = formatValue;
-  readonly formatVariance = formatVariance;
-  readonly formatVariancePercent = formatVariancePercent;
+  showValue(value: number): string {
+    return formatValue(value, this.row.format);
+  }
+
+  showVariance(): string {
+    return formatVariance(this.row);
+  }
+
+  showVariancePercent(): string {
+    return formatVariancePercent(this.row);
+  }
 }
