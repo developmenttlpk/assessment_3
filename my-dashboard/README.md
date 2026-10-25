@@ -1,59 +1,89 @@
-# MyDashboard
+MTD Performance Dashboard
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 20.3.41.
+An Angular 20 dashboard for tracking month-to-date (MTD) target vs. actual performance for a logistics company.
 
-## Development server
+Users can select September or October 2026, filter by cost center and engagement type (Own, Rented, or Hired), and view KPI cards and a summary table showing targets, actuals, variances, and variance percentages.
 
-To start a local development server, run:
+Screenshots
 
-```bash
-ng serve
-```
+Desktop View
 
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
+!Desktop Dashboard
 
-## Code scaffolding
+Mobile View
 
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
+!Mobile Dashboard
 
-```bash
-ng generate component component-name
-```
+Error State
 
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
+!Dashboard Error State
 
-```bash
-ng generate --help
-```
+How to Run
 
-## Building
+Requirements: Node.js 20.19 or newer.
 
-To build the project run:
+bash
+npm install
+npm start
 
-```bash
-ng build
-```
 
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
+Open http://localhost:4200 in your browser.
 
-## Running unit tests
+Run Tests
+bash
+npm test -- --watch=false --browsers=ChromeHeadless
 
-To execute unit tests with the [Karma](https://karma-runner.github.io) test runner, use the following command:
 
-```bash
-ng test
-```
+The 16 tests cover calculations, filters, merged cost centers, caching, refresh behavior, API errors, localStorage, and table formatting.
 
-## Running end-to-end tests
+Project Structure
+text
+src/app/
+  data/              JSON data files
+  models/            TypeScript interfaces
+  services/          Mock API and dashboard state management
+  utils/             Calculations and number formatting
+  components/        KPI cards and summary table
+  pages/dashboard/   Main dashboard page
 
-For end-to-end (e2e) testing, run:
+Key Features
+Target vs. actual performance tracking.
+Filters for cost center and engagement type.
+KPI cards and a summary table with variance calculations.
+Mock API with random delays and occasional failures.
+Loading and error states.
+Monthly data caching and refresh support.
+RxJS switchMap to prevent outdated responses from overwriting newer data.
+Filter preferences saved in localStorage.
+How the Calculations Work
+Cost centers: Selected cost centers are matched against cost_center and merged_group_costcenters. Each detail is processed only once to avoid duplicate totals for merged groups. If no cost center is selected, all are included.
+Target and actual: The combined tables are used when no engagement type is selected. Otherwise, only the selected engagement_tables are included. The data.report values are not used.
+Calculated metrics:
+Adjusted GP = GP - revenue * 1.15 * 0.07
+GP % = adjusted GP / revenue * 100 (0 when revenue is zero)
+Variance = actual - target (for costs, target - actual)
+Variance % = variance / target * 100 (0 when target is zero)
+Status is determined by the variance.
 
-```bash
-ng e2e
-```
+Variance and status values from the JSON files are not used, and percentages are calculated from totals rather than added together.
 
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
+API Handling and Caching
 
-## Additional Resources
+The mock API simulates request delays of 0.3–3 seconds and occasional failures.
 
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+The dashboard uses RxJS switchMap to cancel previous requests when the selected month changes or a refresh is triggered. This prevents outdated responses from replacing the latest data or affecting its loading and error states.
+
+Each month's data is cached in a Map.
+Refresh bypasses the cache and requests fresh data.
+If a refresh fails, the error is displayed while the last successful data is retained.
+Filters update calculations locally without additional API requests.
+Angular's async pipe manages subscriptions.
+The selected month and filters are saved in localStorage.
+Technologies Used
+Angular 20
+TypeScript
+RxJS
+Bootstrap 5
+Bootstrap Icons
+Google Fonts (Poppins)
+Jasmine and Karma

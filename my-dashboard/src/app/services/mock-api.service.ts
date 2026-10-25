@@ -35,9 +35,9 @@ export class MockApiService {
                 }
                 let data: PerformanceResponse;
                 if (m == '2026-09') {
-                    data = september as any;
+                    data = september as unknown as PerformanceResponse;
                 } else {
-                    data = october as any;
+                    data = october as unknown as PerformanceResponse;
                 }
                 return of(structuredClone(data));
             }),
